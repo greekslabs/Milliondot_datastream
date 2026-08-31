@@ -26,15 +26,18 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost',
     'datastream.vittaacademy.com',
+    '43.205.184.207'
 ]
 
 CORS_ALLOWED_ORIGINS = [
     "https://datastream.vittaacademy.com",
     "http://192.168.1.21:9000",
+    "http://43.205.184.207:9000"
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://datastream.vittaacademy.com",
+    "http://43.205.184.207"
 ]
 
 
