@@ -25,19 +25,30 @@ DEBUG = config("DEBUG", cast=bool, default=False)
 ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost',
+    '43.205.184.207',
     'datastream.vittaacademy.com',
-    '43.205.184.207'
+    "datastream.passiveinwealth.com",
+
 ]
 
 CORS_ALLOWED_ORIGINS = [
+    
+    "https://datastream.passiveinwealth.com",
+
+    # DealerHub / Trade frontend
+    "https://trade.passiveinwealth.com",
+    
     "https://datastream.vittaacademy.com",
     "http://192.168.1.21:9000",
     "http://43.205.184.207:9000"
 ]
 
 CSRF_TRUSTED_ORIGINS = [
+    "http://43.205.184.207",
     "https://datastream.vittaacademy.com",
-    "http://43.205.184.207"
+    "https://datastream.passiveinwealth.com",
+    "https://trade.passiveinwealth.com",
+
 ]
 
 
@@ -67,7 +78,7 @@ INSTALLED_APPS = [
     
 ]
 
-CSRF_TRUSTED_ORIGINS = ["https://datastream.vittaacademy.com"]
+
 
 # If you use SECURE_PROXY_SSL_HEADER behind proxy
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
