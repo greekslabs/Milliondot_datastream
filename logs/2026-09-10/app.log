@@ -1,0 +1,18 @@
+[I 260910 09:00:34 smartConnect:124] in pool
+[I 260910 09:00:42 smartConnect:124] in pool
+[I 260910 12:21:31 smartConnect:124] in pool
+[I 260910 12:21:33 smartConnect:124] in pool
+[I 260910 15:57:38 smartConnect:124] in pool
+[I 260910 15:57:46 smartConnect:124] in pool
+[W 260910 17:49:13 smartWebSocketV2:318] Attempting to resubscribe/reconnect (Attempt 1)...
+[W 260910 17:49:13 smartWebSocketV2:318] Attempting to resubscribe/reconnect (Attempt 1)...
+[W 260910 17:49:13 smartWebSocketV2:318] Attempting to resubscribe/reconnect (Attempt 1)...
+[W 260910 17:49:23 smartWebSocketV2:342] Connection closed due to max retry attempts reached.
+[W 260910 17:49:23 smartWebSocketV2:342] Connection closed due to max retry attempts reached.
+[W 260910 17:49:23 smartWebSocketV2:342] Connection closed due to max retry attempts reached.
+[W 260910 17:49:23 smartWebSocketV2:342] Connection closed due to max retry attempts reached.
+[W 260910 17:49:23 smartWebSocketV2:342] Connection closed due to max retry attempts reached.
+[W 260910 17:49:23 smartWebSocketV2:342] Connection closed due to max retry attempts reached.
+[W 260910 17:50:49 smartWebSocketV2:342] Connection closed due to max retry attempts reached.
+[W 260910 17:50:49 smartWebSocketV2:342] Connection closed due to max retry attempts reached.
+[W 260910 17:50:49 smartWebSocketV2:342] Connection closed due to max retry attempts reached.
