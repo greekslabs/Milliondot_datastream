@@ -19,65 +19,150 @@ ANGEL_TOTP_KEY = config("ANGEL_TOTP_KEY")
 ANGEL_API_KEY = config("ANGEL_API_KEY")
 
 
-
 # ================== GLOBAL STATE ==================
+
 stock_template = {}
 ordered_tokens = []
+bse_tokens = []
 
 
 # ================== LOAD NSE EQ SYMBOLS ==================
+
 def load_symbols3():
     """
     Fetch NSE EQ symbols and prepare token map
     """
-    global stock_template, ordered_tokens
+
+    global stock_template, ordered_tokens, bse_tokens
 
     stock_template = {}
     ordered_tokens = []
+    bse_tokens = []
 
     SCRAP_URL = (
         "https://margincalculator.angelbroking.com/"
         "OpenAPI_File/files/OpenAPIScripMaster.json"
     )
 
-    response = requests.get(SCRAP_URL, timeout=10)
+    response = requests.get(
+        SCRAP_URL,
+        timeout=10
+    )
+
     response.raise_for_status()
 
-    df = pd.DataFrame(response.json())
+    df = pd.DataFrame(
+        response.json()
+    )
 
     df = df[
         (df["exch_seg"] == "NSE") &
         (df["symbol"].str.endswith("-EQ"))
-    ][["symbol", "token"]].sort_values("symbol")
+    ][
+        ["symbol", "token"]
+    ].sort_values("symbol")
 
-    # limit universe (same as your original logic)
+    # Utility 3
+    # Keep same logic as your existing code
     df = df.iloc[2000:]
 
+    # ================== NSE EQUITY ==================
 
-    for _, r in df.iterrows():
-        token = str(r["token"])
-        ordered_tokens.append(token)
+    for _, row in df.iterrows():
+
+        token = str(
+            row["token"]
+        )
+
+        ordered_tokens.append(
+            token
+        )
 
         stock_template[token] = {
-            "symbol": r["symbol"],
+            "symbol": row["symbol"],
             "token": token,
             "ltp": None,
             "prev": None,
+            "closed_price": None,
             "time": None,
         }
 
-    print("Loaded stocks:", len(ordered_tokens))
-    return stock_template, ordered_tokens
+    # ================== NSE INDICES ==================
+
+    nse_indices = [
+        ("NIFTY", "26000"),
+        ("BANKNIFTY", "26009"),
+        ("FINNIFTY", "26037"),
+    ]
+
+    for symbol, token in nse_indices:
+
+        ordered_tokens.append(
+            token
+        )
+
+        stock_template[token] = {
+            "symbol": symbol,
+            "token": token,
+            "ltp": None,
+            "prev": None,
+            "closed_price": None,
+            "time": None,
+        }
+
+    # ================== BSE SENSEX ==================
+
+    sensex_token = "99919000"
+
+    bse_tokens.append(
+        sensex_token
+    )
+
+    stock_template[sensex_token] = {
+        "symbol": "SENSEX",
+        "token": sensex_token,
+        "ltp": None,
+        "prev": None,
+        "closed_price": None,
+        "time": None,
+    }
+
+    print(
+        "Loaded NSE stocks:",
+        len(df)
+    )
+
+    print(
+        "NSE tokens including indices:",
+        len(ordered_tokens)
+    )
+
+    print(
+        "BSE tokens:",
+        len(bse_tokens)
+    )
+
+    return (
+        stock_template,
+        ordered_tokens
+    )
 
 
 # ================== ANGEL WEBSOCKET PRODUCER ==================
+
 def start_angel_ws3():
     """
-    Starts Angel One WebSocket and pushes LTPs into Redis
+    Starts Angel One WebSocket
+    and pushes latest LTP data into Redis
     """
 
-    master = SmartConnect(api_key=ANGEL_API_KEY)
-    otp = pyotp.TOTP(ANGEL_TOTP_KEY).now()
+    master = SmartConnect(
+        api_key=ANGEL_API_KEY
+    )
+
+    otp = pyotp.TOTP(
+        ANGEL_TOTP_KEY
+    ).now()
 
     session = master.generateSession(
         ANGEL_USER_ID,
@@ -85,7 +170,11 @@ def start_angel_ws3():
         otp
     )
 
-    feed_token = session["data"]["feedToken"]
+    feed_token = session[
+        "data"
+    ][
+        "feedToken"
+    ]
 
     sws = SmartWebSocketV2(
         feed_token,
@@ -94,27 +183,83 @@ def start_angel_ws3():
         feed_token
     )
 
+    # ================== ON OPEN ==================
+
     def on_open(wsapp):
-        print("Angel WS connected. Subscribing...")
+
+        print(
+            "Angel WS connected. Subscribing..."
+        )
+
+        # NSE Equity + NSE Indices
         sws.subscribe(
             "nse",
             2,
-            [{"exchangeType": 1, "tokens": ordered_tokens}]
+            [
+                {
+                    "exchangeType": 1,
+                    "tokens": ordered_tokens
+                }
+            ]
         )
 
+        # BSE SENSEX
+        sws.subscribe(
+            "bse",
+            2,
+            [
+                {
+                    "exchangeType": 3,
+                    "tokens": bse_tokens
+                }
+            ]
+        )
+
+    # ================== ON DATA ==================
+
     def on_data(wsapp, msg):
-        token = str(msg.get("token"))
+
+        token = str(
+            msg.get("token")
+        )
+
         if token not in stock_template:
             return
 
-        ltp = float(msg["last_traded_price"]) / 100
-        closed_price = float(msg.get("closed_price", 0)) / 100
-        row = stock_template[token]
+        last_traded_price = msg.get(
+            "last_traded_price"
+        )
+
+        if last_traded_price is None:
+            return
+
+        ltp = float(
+            last_traded_price
+        ) / 100
+
+        closed_price = float(
+            msg.get(
+                "closed_price",
+                0
+            )
+        ) / 100
+
+        row = stock_template[
+            token
+        ]
 
         row["prev"] = row["ltp"]
+
         row["ltp"] = ltp
-        row["closed_price"] = closed_price
-        row["time"] = datetime.now().strftime("%H:%M:%S")
+
+        row["closed_price"] = (
+            closed_price
+        )
+
+        row["time"] = (
+            datetime.now()
+            .strftime("%H:%M:%S")
+        )
 
         payload = {
             "symbol": row["symbol"],
@@ -125,33 +270,67 @@ def start_angel_ws3():
             "time": row["time"],
         }
 
-        # ✅ YOUR PREFERRED REDIS KEY
-        cache_key = f"stock:{token}:data"
+        # ================== REDIS ==================
 
-        # store latest LTP (short TTL is ideal for ticks)
-        cache.set(cache_key, json.dumps(payload),timeout=None)
+        cache_key = (
+            f"stock:{token}:data"
+        )
 
-        # maintain active token set
-        cache.client.get_client().sadd("active_tokens", token)
+        cache.set(
+            cache_key,
+            json.dumps(payload),
+            timeout=None
+        )
 
-    def on_error(wsapp, error):
-        print("Angel WS error:", error)
+        # Maintain active token set
+        cache.client.get_client().sadd(
+            "active_tokens",
+            token
+        )
+
+    # ================== ERROR ==================
+
+    def on_error(
+        wsapp,
+        error
+    ):
+
+        print(
+            "Angel WS error:",
+            error
+        )
+
+    # ================== CLOSE ==================
 
     def on_close(wsapp):
-        print("Angel WS closed")
+
+        print(
+            "Angel WS closed"
+        )
+
+    # ================== CALLBACKS ==================
 
     sws.on_open = on_open
     sws.on_data = on_data
     sws.on_error = on_error
     sws.on_close = on_close
 
-    threading.Thread(target=sws.connect, daemon=True).start()
+    # ================== START WS ==================
+
+    threading.Thread(
+        target=sws.connect,
+        daemon=True
+    ).start()
 
 
 # ================== PUBLIC ENTRY POINT ==================
+
 def start_service3():
     """
-    Call this from a management command or service runner
+    Call this from management command
+    or service runner.
     """
+
     load_symbols3()
+
     start_angel_ws3()
